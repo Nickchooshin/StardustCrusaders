@@ -17,6 +17,9 @@ public:
 	CREATE_FUNC(GameUI);
 private:
 	void LoadBarrierDat(int *barrierType, int *barrierNum);
+
+	void BarrierNumberAdd(cocos2d::EventCustom *event);
+	void BarrierNumberSub(cocos2d::EventCustom *event);
 };
 
 #endif

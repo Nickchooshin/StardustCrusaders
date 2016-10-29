@@ -7,6 +7,11 @@
 
 #include "AudioEngine.h"
 
+/*
+#include "network/HttpRequest.h"
+#include "network/HttpClient.h"
+*/
+
 USING_NS_CC;
 using namespace experimental;
 
@@ -73,12 +78,26 @@ void TitleScene::ButtonClick(Ref *pSender)
 {
 	ui::Button *button = (ui::Button*)pSender;
 
+	network::HttpRequest *request;
+
 	switch (button->getTag())
 	{
 	case 0:
+		/*
 		AudioEngine::stopAll();
 		AudioEngine::play2d("Sounds/SE_button.ogg");
 		Director::getInstance()->replaceScene(CCTransitionFade::create(1.0f, StageScene::createScene()));
+		*/
+		
+		request = new network::HttpRequest();
+		//request->setUrl("http://192.168.0.13:8000/");
+		request->setUrl("http://127.0.0.1:9080/");
+		request->setRequestType(network::HttpRequest::Type::POST);
+		request->setResponseCallback(CC_CALLBACK_2(TitleScene::onHttpRequestCompleted, this));
+		request->setRequestData("id=1&pwd=2", 10);
+		network::HttpClient::getInstance()->send(request);
+		request->release();
+		
 		break;
 
 	case 1:
@@ -89,5 +108,18 @@ void TitleScene::ButtonClick(Ref *pSender)
 		exit(0);
 #endif
 		break;
+	}
+}
+
+
+void TitleScene::onHttpRequestCompleted(network::HttpClient *sender, network::HttpResponse *response)
+{
+	if (response->isSucceed())
+	{
+		std::vector<char> *buffer = response->getResponseData();
+
+		for (unsigned int i = 0; i < buffer->size(); i++)
+		{
+		}
 	}
 }

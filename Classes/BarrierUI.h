@@ -19,8 +19,14 @@ public:
 
 	CREATE_FUNC(BarrierUI);
 	static BarrierUI* create(int type, int number);
+
+	const int GetBarrierType() const;
+
+	void Add();
+	void Sub();
 private:
 	void BarrierNumberUpdate();
+	void BarrierAreaUIVisible(cocos2d::EventCustom *event);
 
 	void Click(cocos2d::Ref *pSender);
 };

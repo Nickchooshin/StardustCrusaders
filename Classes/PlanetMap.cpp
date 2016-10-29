@@ -12,7 +12,7 @@ float PlanetMap::m_mapSpace[3] = { 136.0f, 68.0f, 46.0f };
 Vec2 PlanetMap::m_startPosition[3] = { Vec2(151.0f, 247.0f), Vec2(117.0f, 213.0f), Vec2(106.0f, 202.0f) };
 
 PlanetMap::PlanetMap()
-	: m_map(nullptr)
+	: m_isObject(nullptr)
 	, m_size(0)
 	, m_selectedBarrierType(0)
 	, m_selectedTileFrameTag(-1)
@@ -31,7 +31,7 @@ bool PlanetMap::init()
 	FILE *file;
 	char filepath[100];
 
-	sprintf(filepath, "Data/Map/%d.dat", mapNumber);
+	sprintf(filepath, "Data/Map/Map_%d.dat", mapNumber);
 	file = fopen(filepath, "r");
 
 	fscanf(file, "%d\n", &m_size);
@@ -61,15 +61,14 @@ bool PlanetMap::init()
 	const int index = (m_size / 3) - 1;
 	const float space = m_mapSpace[index];
 	const Vec2 startPositon = m_startPosition[index];
-	int planetCount = 0;
 
-	m_map = new int*[m_size];
+	m_isObject = new bool*[m_size];
 	for (int i = 0; i < m_size; i++)
 	{
-		m_map[i] = new int[m_size];
+		m_isObject[i] = new bool[m_size];
 
 		for (int j = 0; j < m_size; j++)
-			m_map[i][j] = -1;
+			m_isObject[i][j] = false;
 	}
 
 	Node *planetNode = Node::create();
@@ -87,21 +86,25 @@ bool PlanetMap::init()
 			{
 				Vec2 position = m_startPosition[index];
 				position.y = visibleSize.height - position.y;
-				position.x += m_mapSpace[index] * i;
-				position.y -= m_mapSpace[index] * j;
+				position.x += m_mapSpace[index] * j;
+				position.y -= m_mapSpace[index] * i;
 
 				Planet *planet = Planet::create(type);
 				planet->setPosition(position);
-				planet->setTag(planetCount);
+				planet->setTag(j + (i * m_size));
 				planetNode->addChild(planet);
 
-				m_map[i][j] = planetCount;
-				++planetCount;
+				m_isObject[i][j] = true;
 			}
 		}
 	}
 
 	fclose(file);
+
+	// Barrier Node
+	Node *barrierNode = Node::create();
+	barrierNode->setName("Barrier_Node");
+	addChild(barrierNode, 1);
 
 	// Map Tile Area
 	Node *tileFrameNode = Node::create();
@@ -114,8 +117,8 @@ bool PlanetMap::init()
 		{
 			Vec2 position = m_startPosition[index];
 			position.y = visibleSize.height - position.y;
-			position.x += m_mapSpace[index] * i;
-			position.y -= m_mapSpace[index] * j;
+			position.x += m_mapSpace[index] * j;
+			position.y -= m_mapSpace[index] * i;
 
 			ui::Button *buttonTileFrame = ui::Button::create("Images/Game/TileFrame.png");
 			buttonTileFrame->setPosition(position);
@@ -138,8 +141,11 @@ bool PlanetMap::init()
 	addChild(textStageName, 2);
 
 	// Event
-	EventListenerCustom *eventListenerCustom = EventListenerCustom::create("BarrierUI_Click", CC_CALLBACK_1(PlanetMap::BarrierBuildPositionSelect, this));
-	_eventDispatcher->addEventListenerWithSceneGraphPriority(eventListenerCustom, this);
+	EventListenerCustom *eventListener_BarrierUI_Click = EventListenerCustom::create("BarrierUI_Click", CC_CALLBACK_1(PlanetMap::BarrierBuildPositionSelect, this));
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(eventListener_BarrierUI_Click, this);
+
+	EventListenerCustom *eventListener_Barrier_Demolish = EventListenerCustom::create("Barrier_Demolish", CC_CALLBACK_1(PlanetMap::BarrierDemolish, this));
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(eventListener_Barrier_Demolish, this);
 
 	return true;
 }
@@ -153,15 +159,15 @@ void PlanetMap::BarrierBuildPosition_Click(cocos2d::Ref *pSender)
 	{
 		m_selectedTileFrameTag = tag;
 
-		Node *planetNode = getChildByName("Planet_Node");
+		Node *barrierNode = getChildByName("Barrier_Node");
 
-		Barrier *barrier = (Barrier*)planetNode->getChildByName("Barrier");
+		Barrier *barrier = (Barrier*)barrierNode->getChildByName("Barrier");
 
 		if (barrier == nullptr)
 		{
 			barrier = Barrier::create(m_selectedBarrierType);
 			barrier->setName("Barrier");
-			planetNode->addChild(barrier);
+			barrierNode->addChild(barrier);
 		}
 
 		barrier->setPosition(buttonTileFrame->getPosition());
@@ -170,32 +176,53 @@ void PlanetMap::BarrierBuildPosition_Click(cocos2d::Ref *pSender)
 	{
 		m_selectedTileFrameTag = -1;
 
-		Node *planetNode = getChildByName("Planet_Node");
-		Barrier *barrier = (Barrier*)planetNode->getChildByName("Barrier");
+		Node *barrierNode = getChildByName("Barrier_Node");
+		Barrier *barrier = (Barrier*)barrierNode->getChildByName("Barrier");
 		barrier->setName("");
+		barrier->setTag(tag);
+
+		int y = tag / m_size;
+		int x = tag % m_size;
+		m_isObject[y][x] = true;
 
 		BarrierBuildPositionSelect_End();
+
+		Director::getInstance()->getEventDispatcher()->dispatchCustomEvent("Barrier_Build", barrier);
 	}
 }
 
 // Event - BarrierUI_Click
 void PlanetMap::BarrierBuildPositionSelect(EventCustom *event)
 {
-	m_selectedBarrierType = *(int*)event->getUserData();
+	int selectedBarrierType = *(int*)event->getUserData();
 
-	Node *tileFrameNode = getChildByName("TileFrame_Node");
-
-	for (int i = 0; i < m_size; i++)
+	if (selectedBarrierType != m_selectedBarrierType)
 	{
-		for (int j = 0; j < m_size; j++)
+		m_selectedBarrierType = selectedBarrierType;
+
+		Node *tileFrameNode = getChildByName("TileFrame_Node");
+
+		for (int i = 0; i < m_size; i++)
 		{
-			if (m_map[i][j] == -1)
+			for (int j = 0; j < m_size; j++)
 			{
-				Node *tileFrame = tileFrameNode->getChildByTag(j + (i * m_size));
-				tileFrame->setVisible(true);
+				if (m_isObject[i][j] == false)
+				{
+					Node *tileFrame = tileFrameNode->getChildByTag(j + (i * m_size));
+					tileFrame->setVisible(true);
+				}
 			}
 		}
 	}
+	else
+	{
+		m_selectedBarrierType = 0;
+
+		BarrierBuildPositionSelect_End();
+	}
+
+	Node *barrierNode = getChildByName("Barrier_Node");
+	barrierNode->removeChildByName("Barrier");
 }
 
 void PlanetMap::BarrierBuildPositionSelect_End()
@@ -205,4 +232,18 @@ void PlanetMap::BarrierBuildPositionSelect_End()
 
 	for (auto tileFrame : tileFrameList)
 		tileFrame->setVisible(false);
+}
+
+// Event - Barrier_Demolish
+void PlanetMap::BarrierDemolish(cocos2d::EventCustom *event)
+{
+	Barrier *barrier = (Barrier*)event->getUserData();
+	int tag = barrier->getTag();
+	int y = tag / m_size;
+	int x = tag % m_size;
+
+	m_isObject[y][x] = false;
+
+	Node *barrierNode = getChildByName("Barrier_Node");
+	barrierNode->removeChild(barrier);
 }

@@ -2,6 +2,7 @@
 
 #include "DataManager.h"
 #include "BarrierUI.h"
+#include "Barrier.h"
 
 #include "ui/CocosGUI.h"
 
@@ -32,8 +33,16 @@ bool GameUI::init()
 	{
 		BarrierUI *barrierUI = BarrierUI::create(barrierType[i], barrierNum[i]);
 		barrierUI->setPosition(72.0f + (i * 144.0f), visibleSize.height - 737.0f);
+		barrierUI->setTag(i);
 		addChild(barrierUI);
 	}
+
+	// Event
+	EventListenerCustom *eventListener_Barrier_Demolish = EventListenerCustom::create("Barrier_Demolish", CC_CALLBACK_1(GameUI::BarrierNumberAdd, this));
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(eventListener_Barrier_Demolish, this);
+
+	EventListenerCustom *eventListener_Barrier_Build = EventListenerCustom::create("Barrier_Build", CC_CALLBACK_1(GameUI::BarrierNumberSub, this));
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(eventListener_Barrier_Build, this);
 
 	return true;
 }
@@ -45,11 +54,47 @@ void GameUI::LoadBarrierDat(int *barrierType, int *barrierNum)
 
 	int mapNumber = DataManager::GetInstance()->GetSelectedStage();
 
-	sprintf(filepath, "Data/Barrier/%d.dat", mapNumber);
+	sprintf(filepath, "Data/Map/Barrier_%d.dat", mapNumber);
 	file = fopen(filepath, "r");
 
 	for (int i = 0; i<4; i++)
 		fscanf(file, "%d %d\n", &barrierType[i], &barrierNum[i]);
 
 	fclose(file);
+}
+
+// Event - Barrier_Demolish
+void GameUI::BarrierNumberAdd(EventCustom *event)
+{
+	Barrier *barrier = (Barrier*)event->getUserData();
+	int barrierType = barrier->GetBarrierType();
+
+	for (int i = 0; i < 4; i++)
+	{
+		BarrierUI *barrierUI = (BarrierUI*)getChildByTag(i);
+
+		if (barrierUI->GetBarrierType() == barrierType)
+		{
+			barrierUI->Add();
+			break;
+		}
+	}
+}
+
+// Event - Barrier_Build
+void GameUI::BarrierNumberSub(EventCustom *event)
+{
+	Barrier *barrier = (Barrier*)event->getUserData();
+	int barrierType = barrier->GetBarrierType();
+
+	for (int i = 0; i < 4; i++)
+	{
+		BarrierUI *barrierUI = (BarrierUI*)getChildByTag(i);
+
+		if (barrierUI->GetBarrierType() == barrierType)
+		{
+			barrierUI->Sub();
+			break;
+		}
+	}
 }

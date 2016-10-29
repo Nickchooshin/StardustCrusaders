@@ -69,4 +69,5 @@ Planet* Planet::create(int type)
 
 void Planet::ClickPlanet(Ref *pSender)
 {
+	Director::getInstance()->getEventDispatcher()->dispatchCustomEvent("Object_Menu_Close", this);
 }

@@ -2,6 +2,8 @@
 #define _TITLE_SCENE_H_
 
 #include "cocos2d.h"
+#include "network/HttpClient.h"
+#include "network/HttpResponse.h"
 
 #include <vector>
 
@@ -22,6 +24,8 @@ private:
 	void LineEffectUpdate(float dt);
 
 	void ButtonClick(Ref *pSender);
+
+	void onHttpRequestCompleted(cocos2d::network::HttpClient *sender, cocos2d::network::HttpResponse *response);
 };
 
 #endif

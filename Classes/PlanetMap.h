@@ -7,7 +7,7 @@
 class PlanetMap : public cocos2d::Node
 {
 private:
-	int **m_map;
+	bool **m_isObject;
 	int m_size;
 	int m_selectedBarrierType;
 	int m_selectedTileFrameTag;
@@ -28,6 +28,7 @@ private:
 
 	void BarrierBuildPositionSelect(cocos2d::EventCustom *event);
 	void BarrierBuildPositionSelect_End();
+	void BarrierDemolish(cocos2d::EventCustom *event);
 };
 
 #endif
